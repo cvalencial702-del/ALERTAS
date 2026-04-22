@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alertas PQRSD · Vencimientos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117; --sur:#181b24; --card:#1e2130; --brd:#2a2f42;
+  --acc:#e8c547; --red:#ff5252; --grn:#52ffb8; --blu:#5271ff;
+  --txt:#e8eaf0; --mut:#6b7190;
+  --fd:'DM Serif Display',serif; --fu:'Syne',sans-serif; --fm:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--txt);font-family:var(--fu);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(232,197,71,.04) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(232,197,71,.04) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0;}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+
+/* ── HEADER ── */
+header{border-bottom:1px solid var(--brd);padding:14px 0;
+  background:rgba(15,17,23,.96);backdrop-filter:blur(14px);
+  position:sticky;top:0;z-index:100;}
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  max-width:1120px;margin:0 auto;padding:0 24px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-ico{width:38px;height:38px;background:var(--acc);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;}
+.logo-name{font-family:var(--fd);font-size:21px;}
+.logo-sub{font-size:10px;color:var(--mut);font-family:var(--fm);letter-spacing:2px;text-transform:uppercase;}
+.hdr-badge{font-family:var(--fm);font-size:11px;color:var(--acc);
+  border:1px solid rgba(232,197,71,.3);padding:5px 12px;border-radius:20px;}
+
+/* ── HERO ── */
+.hero{padding:56px 0 40px;text-align:center;}
+.hero-eyebrow{font-family:var(--fm);font-size:11px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--acc);margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:36px;height:1px;background:var(--acc);opacity:.4;}
+h1{font-family:var(--fd);font-size:clamp(34px,6vw,62px);line-height:1.05;letter-spacing:-1px;margin-bottom:14px;}
+h1 em{color:var(--acc);font-style:italic;}
+.hero-sub{color:var(--mut);font-size:14px;max-width:440px;margin:0 auto 36px;line-height:1.65;}
+
+/* ── UPLOAD ── */
+.drop{border:2px dashed var(--brd);border-radius:18px;padding:52px 32px;text-align:center;
+  cursor:pointer;transition:all .25s;background:var(--sur);max-width:600px;margin:0 auto;
+  position:relative;overflow:hidden;}
+.drop::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,rgba(232,197,71,.06),transparent 70%);
+  opacity:0;transition:opacity .3s;pointer-events:none;}
+.drop:hover,.drop.over{border-color:var(--acc);transform:translateY(-3px);}
+.drop:hover::before,.drop.over::before{opacity:1;}
+.drop-ico{font-size:48px;margin-bottom:14px;display:block;line-height:1;}
+.drop-title{font-size:17px;font-weight:700;margin-bottom:6px;}
+.drop-hint{font-size:12px;color:var(--mut);font-family:var(--fm);margin-bottom:24px;}
+#fi{display:none;}
+
+/* ── ERROR BOX ── */
+.errbox{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.35);
+  border-radius:10px;padding:14px 18px;font-size:13px;color:var(--red);
+  margin:14px auto;max-width:600px;display:none;text-align:left;line-height:1.5;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:9px;
+  font-family:var(--fu);font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;}
+.btn-acc{background:var(--acc);color:#0f1117;}
+.btn-acc:hover{background:#f0d060;transform:translateY(-1px);box-shadow:0 8px 24px rgba(232,197,71,.3);}
+.btn-red{background:var(--red);color:#fff;}
+.btn-red:hover{background:#ff6b6b;transform:translateY(-1px);}
+.btn-out{background:transparent;border:1px solid var(--brd);color:var(--txt);}
+.btn-out:hover{border-color:var(--acc);color:var(--acc);}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:36px 0 28px;animation:up .5s ease;}
+.sc{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:20px;position:relative;overflow:hidden;}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;}
+.sc.r::after{background:var(--red);}  .sc.y::after{background:var(--acc);}
+.sc.g::after{background:var(--grn);} .sc.b::after{background:var(--blu);}
+.sc-lbl{font-size:11px;color:var(--mut);font-family:var(--fm);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.sc-val{font-family:var(--fd);font-size:38px;line-height:1;}
+.sc.r .sc-val{color:var(--red);} .sc.y .sc-val{color:var(--acc);}
+.sc.g .sc-val{color:var(--grn);} .sc.b .sc-val{color:var(--blu);}
+.sc-sub{font-size:12px;color:var(--mut);margin-top:5px;}
+
+/* ── CONFIG BAR ── */
+.cfgbar{background:var(--card);border:1px solid var(--brd);border-radius:14px;
+  padding:20px 24px;margin-bottom:26px;display:flex;align-items:center;gap:14px;
+  flex-wrap:wrap;animation:up .4s ease;}
+.cfgbar label{font-size:12px;color:var(--mut);font-family:var(--fm);white-space:nowrap;}
+.ei{flex:1;min-width:220px;background:var(--sur);border:1px solid var(--brd);border-radius:9px;
+  padding:9px 14px;color:var(--txt);font-family:var(--fm);font-size:13px;outline:none;transition:border-color .2s;}
+.ei:focus{border-color:var(--acc);}
+.di{width:66px;background:var(--sur);border:1px solid var(--brd);border-radius:9px;
+  padding:9px 14px;color:var(--acc);font-family:var(--fm);font-size:13px;outline:none;text-align:center;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;background:var(--sur);border:1px solid var(--brd);
+  border-radius:11px;padding:4px;margin-bottom:20px;}
+.tab{flex:1;padding:9px 14px;border-radius:8px;border:none;background:transparent;
+  color:var(--mut);font-family:var(--fu);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;}
+.tab.on{background:var(--card);color:var(--txt);border:1px solid var(--brd);}
+
+/* ── TABLE ── */
+.twrap{background:var(--card);border:1px solid var(--brd);border-radius:14px;overflow:auto;animation:up .4s ease;}
+table{width:100%;border-collapse:collapse;min-width:680px;}
+thead{background:var(--sur);}
+th{padding:11px 15px;text-align:left;font-size:10px;font-family:var(--fm);color:var(--mut);
+  text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--brd);white-space:nowrap;}
+td{padding:11px 15px;font-size:13px;border-bottom:1px solid rgba(42,47,66,.45);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(232,197,71,.025);}
+.rad{font-family:var(--fm);font-size:12px;color:var(--acc);}
+.dt{font-family:var(--fm);font-size:12px;white-space:nowrap;}
+.usr{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}
+.chip{display:inline-block;padding:3px 11px;border-radius:20px;font-family:var(--fm);font-size:11px;font-weight:600;}
+.cr{background:rgba(255,82,82,.15);color:var(--red);}
+.cy{background:rgba(232,197,71,.15);color:var(--acc);}
+.cg{background:rgba(82,255,184,.12);color:var(--grn);}
+.cm{background:rgba(107,113,144,.2);color:var(--mut);}
+
+.empty{text-align:center;padding:60px 20px;color:var(--mut);}
+.empty .ei2{font-size:46px;margin-bottom:10px;}
+.empty .et{font-family:var(--fd);font-size:22px;color:var(--txt);margin-bottom:6px;}
+.empty .es{font-size:13px;}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(5px);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;}
+.mo.open{opacity:1;pointer-events:all;}
+.md{background:var(--card);border:1px solid var(--brd);border-radius:22px;padding:38px;
+  max-width:560px;width:92%;transform:scale(.95);transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+.mo.open .md{transform:scale(1);}
+.md h2{font-family:var(--fd);font-size:28px;margin-bottom:8px;}
+.md p{color:var(--mut);font-size:13px;line-height:1.65;margin-bottom:20px;}
+.eprev{background:var(--sur);border:1px solid var(--brd);border-radius:11px;
+  padding:18px;margin-bottom:22px;font-size:13px;line-height:2;}
+.eprev strong{color:var(--acc);}
+.epr{display:flex;gap:8px;}
+.epl{color:var(--mut);min-width:66px;font-family:var(--fm);font-size:11px;text-transform:uppercase;}
+.mact{display:flex;gap:10px;justify-content:flex-end;}
+.pbar{height:3px;background:var(--brd);border-radius:3px;overflow:hidden;margin-top:10px;}
+.pfill{height:100%;background:var(--acc);border-radius:3px;width:0%;transition:width .4s ease;}
+#sp{display:none;margin-bottom:18px;}
+#sp .sl{font-size:12px;color:var(--mut);font-family:var(--fm);margin-bottom:6px;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:26px;right:26px;background:var(--card);border:1px solid var(--brd);
+  border-radius:14px;padding:14px 20px;max-width:360px;z-index:1000;
+  transform:translateY(110px);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:flex-start;gap:12px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(82,255,184,.4);}
+.toast.err{border-color:rgba(255,82,82,.4);}
+.ti{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tt{font-weight:700;font-size:13px;margin-bottom:3px;}
+.tm{font-size:12px;color:var(--mut);line-height:1.4;}
+
+.sec{margin-bottom:40px;}
+@keyframes up{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .cfgbar{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <div class="logo">
+      <div class="logo-ico">⚡</div>
+      <div>
+        <div class="logo-name">AlertasPQRSD</div>
+        <div class="logo-sub">Seguimiento · Vencimientos</div>
+      </div>
+    </div>
+    <div class="hdr-badge">Hidrocarburos · Minería · Energéticos</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO + UPLOAD -->
+  <div class="hero">
+    <div class="hero-eyebrow">Monitor de Vencimientos</div>
+    <h1>Nunca pierdas<br><em>un plazo</em> crítico</h1>
+    <p class="hero-sub">Carga el Excel de seguimiento PQRSD y recibe alertas por correo antes de que venzan los trámites.</p>
+
+    <div class="drop" id="dropZone">
+      <input type="file" id="fi" accept=".xlsx,.xls">
+      <span class="drop-ico">📂</span>
+      <div class="drop-title">Arrastra tu archivo Excel aquí</div>
+      <p class="drop-hint">.xlsx · .xls — Seguimiento PQRSD</p>
+      <button class="btn btn-acc" id="btnPick">📁 Seleccionar archivo</button>
+    </div>
+    <div class="errbox" id="errbox"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dash" style="display:none">
+
+    <div class="cfgbar">
+      <label>📧 Correo destino:</label>
+      <input type="email" class="ei" id="emailTo" value="cvalencial702@gmail.com">
+      <label>⏰ Días de antelación:</label>
+      <input type="number" class="di" id="dias" value="5" min="1" max="90">
+      <button class="btn btn-red" id="btnAlerta">🔔 Enviar alerta</button>
+    </div>
+
+    <div class="stats">
+      <div class="sc r"><div class="sc-lbl">Vencidas</div><div class="sc-val" id="sv">0</div><div class="sc-sub">Acumuladas</div></div>
+      <div class="sc y"><div class="sc-lbl">Próximas</div><div class="sc-val" id="sp2">0</div><div class="sc-sub" id="sdl">Dentro de 5 días</div></div>
+      <div class="sc g"><div class="sc-lbl">En Gestión</div><div class="sc-val" id="sg">0</div><div class="sc-sub">Sin riesgo inmediato</div></div>
+      <div class="sc b"><div class="sc-lbl">Total</div><div class="sc-val" id="st">0</div><div class="sc-sub">Trámites cargados</div></div>
+    </div>
+
+    <div class="sec">
+      <div class="tabs">
+        <button class="tab on" id="t0">⚠️ Próximas a vencer</button>
+        <button class="tab"    id="t1">🔴 Vencidas</button>
+        <button class="tab"    id="t2">🟢 En Gestión</button>
+      </div>
+      <div id="p0"></div>
+      <div id="p1" style="display:none"></div>
+      <div id="p2" style="display:none"></div>
+    </div>
+
+  </div><!-- /dash -->
+</div><!-- /wrap -->
+
+<!-- MODAL -->
+<div class="mo" id="modal">
+  <div class="md">
+    <h2>✉️ Enviar Alerta</h2>
+    <p>Se generará un correo formal con los trámites próximos a vencer y se abrirá en tu cliente de correo.</p>
+    <div class="eprev">
+      <div class="epr"><span class="epl">Para:</span> <strong id="mEmail">—</strong></div>
+      <div class="epr"><span class="epl">Asunto:</span> <span id="mAsunto" style="color:var(--txt)">—</span></div>
+      <div class="epr"><span class="epl">Items:</span> <span id="mCount" style="color:var(--txt)">—</span></div>
+    </div>
+    <div id="sp">
+      <div class="sl">Generando correo con IA…</div>
+      <div class="pbar"><div class="pfill" id="pf"></div></div>
+    </div>
+    <div class="mact">
+      <button class="btn btn-out" id="btnCancel">Cancelar</button>
+      <button class="btn btn-acc" id="btnConfirm">📨 Abrir correo</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="ti" id="ticon"></span>
+  <div><div class="tt" id="ttitle"></div><div class="tm" id="tmsg"></div></div>
+</div>
+
+<script>
+'use strict';
+// ─────────────────────────────────────────────────────────
+// ESTADO GLOBAL
+// ─────────────────────────────────────────────────────────
+var DB = { ven: [], ges: [] };  // vencidas, gestión
+var PROX = [];                  // próximas a vencer
+
+// ─────────────────────────────────────────────────────────
+// WIRING DE EVENTOS
+// ─────────────────────────────────────────────────────────
+var dropZ  = document.getElementById('dropZone');
+var fiInp  = document.getElementById('fi');
+
+document.getElementById('btnPick').addEventListener('click', function(e){
+  e.stopPropagation();
+  fiInp.click();
+});
+dropZ.addEventListener('click', function(){ fiInp.click(); });
+fiInp.addEventListener('change', function(e){
+  if (e.target.files && e.target.files[0]) processFile(e.target.files[0]);
+});
+dropZ.addEventListener('dragover',  function(e){ e.preventDefault(); e.stopPropagation(); dropZ.classList.add('over'); });
+dropZ.addEventListener('dragleave', function(e){ e.preventDefault(); dropZ.classList.remove('over'); });
+dropZ.addEventListener('drop',      function(e){
+  e.preventDefault(); e.stopPropagation();
+  dropZ.classList.remove('over');
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+
+document.getElementById('btnAlerta').addEventListener('click', openModal);
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+document.getElementById('btnConfirm').addEventListener('click', doSend);
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+document.getElementById('dias').addEventListener('change', function(){
+  if (DB.ven.length || DB.ges.length) renderDash();
+});
+['t0','t1','t2'].forEach(function(id, idx){
+  document.getElementById(id).addEventListener('click', function(){ switchTab(idx); });
+});
+
+// ─────────────────────────────────────────────────────────
+// LECTURA DEL ARCHIVO
+// ─────────────────────────────────────────────────────────
+function processFile(file) {
+  hideErr();
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(new Uint8Array(e.target.result), {
+        type:      'array',
+        cellDates: true,   // convierte fechas Excel a objetos Date JS
+        raw:       false
+      });
+
+      // ── Localizar hojas ignorando acentos / mayúsculas ──
+      var vName = matchSheet(wb.SheetNames, 'vencidas');
+      var gName = matchSheet(wb.SheetNames, 'gestion'); // "En Gestión" → "en gestion"
+
+      if (!vName && !gName) {
+        showErr('No se encontraron las hojas. Hojas disponibles: ' + wb.SheetNames.join(' | '));
+        return;
+      }
+
+      DB.ven = vName ? sheetToRows(wb.Sheets[vName]) : [];
+      DB.ges = gName ? sheetToRows(wb.Sheets[gName]) : [];
+
+      if (!DB.ven.length && !DB.ges.length) {
+        showErr('El archivo se leyó correctamente pero no contiene registros con Radicado. Revisa la estructura.');
+        return;
+      }
+
+      renderDash();
+      toast('ok', '✅', 'Archivo cargado', (DB.ven.length + DB.ges.length) + ' registros procesados correctamente');
+    } catch(err) {
+      console.error(err);
+      showErr('Error al procesar el archivo: ' + err.message);
+    }
+  };
+  reader.onerror = function(){ showErr('No se pudo leer el archivo. Inténtalo de nuevo.'); };
+  reader.readAsArrayBuffer(file);
+}
+
+/* Normaliza un string: quita acentos, minúsculas, sin espacios extra */
+function norm(s) {
+  return String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // elimina diacríticos
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* Busca en la lista de nombres de hoja el que contenga la palabra clave */
+function matchSheet(names, keyword) {
+  var kw = norm(keyword);
+  for (var i = 0; i < names.length; i++) {
+    if (norm(names[i]).indexOf(kw) >= 0) return names[i];
+  }
+  return null;
+}
+
+/* Convierte una hoja de Excel en array de objetos {columna: valor} */
+function sheetToRows(ws) {
+  // Extraer como array de arrays; raw:false + cellDates:true en XLSX.read
+  var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+  // Buscar la fila de encabezados (la que contiene 'Radicado')
+  var hIdx = -1;
+  for (var i = 0; i < Math.min(aoa.length, 20); i++) {
+    for (var j = 0; j < aoa[i].length; j++) {
+      if (norm(String(aoa[i][j])) === 'radicado') { hIdx = i; break; }
+    }
+    if (hIdx >= 0) break;
+  }
+  if (hIdx < 0) return [];
+
+  // Encabezados originales (preservar acentos para mostrar)
+  var hdrs = aoa[hIdx].map(function(h){ return String(h || '').trim(); });
+
+  var rows = [];
+  for (var r = hIdx + 1; r < aoa.length; r++) {
+    var row = aoa[r];
+    if (!row || row.every(function(c){ return c === '' || c == null; })) continue;
+    var obj = {};
+    hdrs.forEach(function(h, idx) {
+      var val = row[idx];
+      // Si la celda llegó como Date JS (gracias a cellDates:true), la conservamos
+      obj[h] = (val instanceof Date) ? val : String(val != null ? val : '').trim();
+    });
+    // Solo filas con Radicado real
+    var rad = obj['Radicado'] || '';
+    if (String(rad).length > 2) rows.push(obj);
+  }
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────
+// FECHAS
+// ─────────────────────────────────────────────────────────
+function toDate(val) {
+  if (!val && val !== 0) return null;
+
+  // Objeto Date JS (viene de cellDates:true)
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : stripTime(val);
+  }
+
+  var s = String(val).trim();
+  if (!s) return null;
+
+  // Número serial de Excel (ej. "45123")
+  var n = parseFloat(s);
+  if (!isNaN(n) && n > 30000 && n < 100000) {
+    var d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+    return stripTime(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  }
+
+  // "2026-05-19 00:00:00" o "2026-05-19"
+  var m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return stripTime(new Date(+m[1], +m[2]-1, +m[3]));
+
+  // "19/05/2026" o "19-05-2026"
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return stripTime(new Date(+m[3], +m[2]-1, +m[1]));
+
+  return null;
+}
+
+function stripTime(d) {
+  var r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return isNaN(r.getTime()) ? null : r;
+}
+
+function diasRestantes(val) {
+  var f = toDate(val);
+  if (!f) return null;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.floor((f - hoy) / 86400000);
+}
+
+function fmtFecha(val) {
+  var f = toDate(val);
+  if (!f) return val ? String(val).split(' ')[0] : '—';
+  return f.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER DEL DASHBOARD
+// ─────────────────────────────────────────────────────────
+function renderDash() {
+  var d = parseInt(document.getElementById('dias').value, 10) || 5;
+
+  PROX = DB.ges.filter(function(r) {
+    var dr = diasRestantes(r['Fecha Vencimiento']);
+    return dr !== null && dr >= 0 && dr <= d;
+  });
+
+  document.getElementById('sv').textContent  = DB.ven.length;
+  document.getElementById('sp2').textContent = PROX.length;
+  document.getElementById('sg').textContent  = DB.ges.length;
+  document.getElementById('st').textContent  = DB.ven.length + DB.ges.length;
+  document.getElementById('sdl').textContent = 'Dentro de ' + d + ' días';
+
+  buildPane0();
+  buildPane1();
+  buildPane2();
+
+  document.getElementById('dash').style.display = 'block';
+}
+
+function chip(dr) {
+  if (dr === null) return '<span class="chip cm">—</span>';
+  if (dr < 0)      return '<span class="chip cr">Vencido (' + Math.abs(dr) + 'd)</span>';
+  if (dr === 0)    return '<span class="chip cr">Hoy</span>';
+  if (dr <= 5)     return '<span class="chip cy">En ' + dr + 'd</span>';
+  return '<span class="chip cg">En ' + dr + 'd</span>';
+}
+
+function col(row /*, key1, key2, ... */) {
+  for (var i = 1; i < arguments.length; i++) {
+    var v = row[arguments[i]];
+    if (v !== undefined && String(v).trim() !== '') return String(v).trim();
+  }
+  return '—';
+}
+
+function tbl(rows, headers, rowFn) {
+  if (!rows.length) return (
+    '<div class="empty">' +
+    '<div class="ei2">🎉</div>' +
+    '<div class="et">Sin registros</div>' +
+    '<div class="es">No hay trámites en esta categoría</div>' +
+    '</div>'
+  );
+  var ths = headers.map(function(h){ return '<th>' + h + '</th>'; }).join('');
+  var trs = rows.map(rowFn).join('');
+  return '<div class="twrap"><table><thead><tr>' + ths + '</tr></thead><tbody>' + trs + '</tbody></table></div>';
+}
+
+function buildPane0() {
+  document.getElementById('p0').innerHTML = tbl(
+    PROX,
+    ['#','Radicado','Fecha ingreso','Usuario','Trámite','Fecha vencimiento','Días restantes'],
+    function(r, i) {
+      var dr = diasRestantes(r['Fecha Vencimiento']);
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td class="rad">' + col(r,'Radicado') + '</td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha']) + '</td>' +
+        '<td class="usr" title="' + col(r,'Usuario Actual') + '">' + col(r,'Usuario Actual') + '</td>' +
+        '<td style="font-size:12px">' + col(r,'Tramite','Trámite') + '</td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha Vencimiento']) + '</td>' +
+        '<td>' + chip(dr) + '</td>' +
+      '</tr>';
+    }
+  );
+}
+
+function buildPane1() {
+  document.getElementById('p1').innerHTML = tbl(
+    DB.ven,
+    ['#','Radicado','Fecha ingreso','Usuario','Estado PQRSD','Fecha vencimiento'],
+    function(r, i) {
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td class="rad">' + col(r,'Radicado') + '</td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha']) + '</td>' +
+        '<td class="usr" title="' + col(r,'Usuario Actual') + '">' + col(r,'Usuario Actual') + '</td>' +
+        '<td><span class="chip cr">' + col(r,'Estado PQRSD') + '</span></td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha Vencimiento']) + '</td>' +
+      '</tr>';
+    }
+  );
+}
+
+function buildPane2() {
+  document.getElementById('p2').innerHTML = tbl(
+    DB.ges,
+    ['#','Radicado','Fecha ingreso','Usuario','Estado','Fecha vencimiento','Alerta'],
+    function(r, i) {
+      var dr = diasRestantes(r['Fecha Vencimiento']);
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td class="rad">' + col(r,'Radicado') + '</td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha']) + '</td>' +
+        '<td class="usr" title="' + col(r,'Usuario Actual') + '">' + col(r,'Usuario Actual') + '</td>' +
+        '<td><span class="chip cg">' + col(r,'Estado PQRSD') + '</span></td>' +
+        '<td class="dt">'  + fmtFecha(r['Fecha Vencimiento']) + '</td>' +
+        '<td>' + chip(dr) + '</td>' +
+      '</tr>';
+    }
+  );
+}
+
+function switchTab(n) {
+  ['t0','t1','t2'].forEach(function(id, i){
+    document.getElementById(id).classList.toggle('on', i === n);
+  });
+  ['p0','p1','p2'].forEach(function(id, i){
+    document.getElementById(id).style.display = i === n ? '' : 'none';
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// MODAL Y ENVÍO DE ALERTA
+// ─────────────────────────────────────────────────────────
+function openModal() {
+  var email = document.getElementById('emailTo').value;
+  var d     = document.getElementById('dias').value;
+  var hoy   = new Date().toLocaleDateString('es-CO');
+  document.getElementById('mEmail').textContent  = email;
+  document.getElementById('mAsunto').textContent = '⚠️ Alerta PQRSD · Vencimientos próximos (' + hoy + ')';
+  document.getElementById('mCount').textContent  = PROX.length + ' trámite(s) próximos a vencer';
+  document.getElementById('sp').style.display = 'none';
+  document.getElementById('pf').style.width   = '0%';
+  document.getElementById('btnConfirm').disabled    = false;
+  document.getElementById('btnConfirm').textContent = '📨 Abrir correo';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function doSend() {
+  var emailTo = document.getElementById('emailTo').value;
+  var dias    = parseInt(document.getElementById('dias').value, 10) || 5;
+  var btn     = document.getElementById('btnConfirm');
+  var spDiv   = document.getElementById('sp');
+  var pf      = document.getElementById('pf');
+
+  btn.disabled    = true;
+  btn.textContent = 'Preparando…';
+  spDiv.style.display = 'block';
+  pf.style.width = '20%';
+
+  var hoy = new Date().toLocaleDateString('es-CO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  var lista = PROX.map(function(r, i) {
+    var dr = diasRestantes(r['Fecha Vencimiento']);
+    return (i+1) + '. Radicado: ' + col(r,'Radicado') +
+           ' | Usuario: '   + col(r,'Usuario Actual') +
+           ' | Trámite: '   + col(r,'Tramite','Trámite') +
+           ' | Vence: '     + fmtFecha(r['Fecha Vencimiento']) +
+           ' | Días restantes: ' + (dr !== null ? dr : 'N/A');
+  }).join('\n');
+
+  var prompt =
+    'Redacta un correo electrónico formal en español para una entidad pública colombiana. ' +
+    'Es una ALERTA de vencimiento de trámites PQRSD.\n\n' +
+    'Fecha actual: ' + hoy + '\n' +
+    'Destinatario: ' + emailTo + '\n' +
+    'Antelación configurada: ' + dias + ' días\n' +
+    'Trámites próximos a vencer (' + PROX.length + '):\n' +
+    (lista || 'Ninguno en el periodo.') + '\n\n' +
+    'Requisitos:\n' +
+    '- Primera línea OBLIGATORIA: "Asunto: [texto del asunto]"\n' +
+    '- Tono formal, urgente y conciso\n' +
+    '- Lista numerada de los trámites\n' +
+    '- Llamado a la acción claro\n' +
+    '- Firma: "Sistema de Alertas PQRSD\\nGrupo de Hidrocarburos, Minería y Energéticos"\n' +
+    'Responde EXCLUSIVAMENTE con el correo. Sin explicaciones adicionales.';
+
+  setTimeout(function(){ pf.style.width = '55%'; }, 300);
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(json) {
+    pf.style.width = '100%';
+    var texto = (json.content && json.content[0] && json.content[0].text) ? json.content[0].text : '';
+    setTimeout(function(){ abrirCorreo(emailTo, texto); }, 350);
+  })
+  .catch(function() {
+    // Fallback sin IA
+    pf.style.width = '100%';
+    var asunto = '⚠️ Alerta PQRSD: ' + PROX.length + ' trámites próximos a vencer';
+    var cuerpo =
+      'Asunto: ' + asunto + '\n\n' +
+      'Cordial saludo,\n\n' +
+      'Se informa que los siguientes trámites PQRSD están próximos a vencer dentro de los próximos ' + dias + ' días:\n\n' +
+      lista + '\n\n' +
+      'Se solicita atención prioritaria e inmediata.\n\n' +
+      'Atentamente,\n' +
+      'Sistema de Alertas PQRSD\n' +
+      'Grupo de Hidrocarburos, Minería y Energéticos';
+    setTimeout(function(){ abrirCorreo(emailTo, cuerpo); }, 350);
+  });
+}
+
+function abrirCorreo(emailTo, texto) {
+  var lines  = texto.split('\n');
+  var aLine  = lines.find(function(l){ return /^asunto:/i.test(l.trim()); }) || '';
+  var asunto = aLine.replace(/^asunto:\s*/i, '').trim() ||
+               ('⚠️ Alerta PQRSD: ' + PROX.length + ' trámites próximos a vencer');
+  var cuerpo = lines.filter(function(l){ return !/^asunto:/i.test(l.trim()); }).join('\n').trim();
+
+  window.location.href =
+    'mailto:' + emailTo +
+    '?subject=' + encodeURIComponent(asunto) +
+    '&body='    + encodeURIComponent(cuerpo);
+
+  closeModal();
+  toast('ok', '📧', 'Correo listo', 'Se abrió tu cliente de correo con ' + PROX.length + ' trámite(s) listado(s)');
+}
+
+// ─────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────
+function showErr(msg) {
+  var b = document.getElementById('errbox');
+  b.innerHTML = '⚠️ ' + msg;
+  b.style.display = 'block';
+}
+function hideErr() { document.getElementById('errbox').style.display = 'none'; }
+
+function toast(type, icon, title, msg) {
+  var el = document.getElementById('toast');
+  document.getElementById('ticon').textContent  = icon;
+  document.getElementById('ttitle').textContent = title;
+  document.getElementById('tmsg').textContent   = msg;
+  el.className = 'toast ' + type + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.classList.remove('show'); }, 5500);
+}
+</script>
+</body>
+</html>
